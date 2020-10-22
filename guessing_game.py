@@ -1,48 +1,125 @@
-x= [xx for xx in range(1,64)]
-num_i = [i for i in range(1,64,2)]
-num_ii = x[1::16]+ x[2::16]+ x[5::16]+ x[6::16]+ \
-         x[9::16]+ x[10::16]+ x[13::16]+ x[14::16]
-num_ii.sort()
-num_iii= x[3::16]+ x[4::16]+ x[5::16]+ x[6::16]+ \
-         x[11::16]+ x[12::16]+ x[13::16]+ x[14::16]
-num_iii.sort()
-num_iv=  x[7::16]+ x[8::16]+ x[9::16]+ x[10::16]+ \
-        x[11::16]+ x[12::16]+ x[13::16]+ x[14::16]
-num_iv.sort()
-num_v= x[15::32]+ x[16::32]+ x[17::32]+ x[18::32]+ \
-       x[19::32]+ x[20::32]+ x[21::32]+ x[22::32]+ \
-       x[23::32]+ x[24::32]+ x[25::32]+ x[26::32]+ \
-       x[27::32]+ x[28::32]+ x[29::32]+ x[30::32]
-num_v.sort()
-num_vi= [x for x in range(32,64)]
-num_lists=[num_i,num_ii,num_iii,num_iv,num_v,num_vi]
-addition_num= [1,2,4,8,16,32]
-start_end= ["Think of a number between 1 and 63","I think the number you thought of was ..."]
-intro= ["Is your number in the group of numbers below?",
-        "Is your number in this group of numbers ?","Is your number in this third group of numbers ?",
-        "Half way there. Is your number in this group of numbers ?",
-        "One more after this one. Is your number in this group of numbers ?",
-        "Last one. Is your number in this group of numbers ?"]
-def format_list(xx):    
-    for a,b,c,d,e,f,g,h in zip(xx[::8],xx[1::8],xx[2::8],xx[3::8],xx[4::8],xx[5::8],xx[6::8],xx[7::8]):
-        print('{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<}'.format(a,b,c,d,e,f,g,h))
-    print('-'*62)
-def main():    
-    count=0
-    your_guess= 0
-    print(start_end[0])
-    ready= input('are you ready?(enter to quit or any key)')
-    if ready:
-        while count < 6:
-            print(intro[count])    
-            format_list(num_lists[count])
-            reply = input("y/n ?")
-            if reply == "y" :
-                your_guess += addition_num[count]
-            count +=1
-    print(start_end[1] + str(your_guess))
-    replay= input('Play again? (enter to quit or any key)')
-    if replay:        
-        main()
+from tkinter import *
+from random import shuffle, random, choice
+from tkinter.messagebox import *
+from tkinter.simpledialog import askstring
+from tkinter import ttk
+import logging, sys
+
+
+logging.basicConfig(level= logging.DEBUG)
+#logging.disable(logging.CRITICAL)
+
+class Guess_Your_Number(Frame):
+    def __init__(self, parent=None):
+        self.parent= parent
+        Frame.__init__(self, self.parent)
+        self.pack(expand=YES, fill=BOTH)
+
+        font_1= ('arial',19,'bold')
+        font_2= ('arial',16,'bold')
+        self.canvas= Canvas(self)
+        self.canvas.config(width= 1200, height= 1100, bg='gray90')
+        self.canvas.pack(expand=YES, fill=BOTH)
+
+        self.top_lbl= StringVar()
+        self.tp_lbl= Label(self.canvas, textvariable=self.top_lbl,
+                           font=font_1)
+        self.tp_lbl.place(x=50,y=44)
+
+        self.window= Text(self.canvas, relief='sunken',font=font_2,
+                          height=35)
+        self.window.place(x=75,y=150)
+
+        self.multiplier= IntVar()
+        self.drop_down= ttk.Combobox(self.canvas,textvariable=self.multiplier,
+                                     width=18)
+        self.drop_down.place(x=500,y=50)
+        self.drop_down['values']=(63,127,255,511)
+        self.multiplier.set(63)
+        self.base_dict= {63:6,127:7,255:8,511:9}
+
+        self.yes_btn= Button(self.canvas, text='begin', command=self.on_yes)
+                
+        self.btn= Button(self.canvas, text='submit', command= self.get_entry,
+                         state='disabled')
+        self.btn.place(x=600,y=100)
+        
+        self.radio= BooleanVar()
+        self.rad_yes= Radiobutton(self.canvas,text='yes',value=True,
+                                  variable=self.radio)
+        self.rad_yes.place(x=200,y=100)
+        self.rad_no= Radiobutton(self.canvas,text='no',value=False,
+                                 variable=self.radio)
+        self.rad_no.place(x=280,y=100)        
+        
+        self.bind_all('<Key>', self.key)
+        self.g_count=0
+        self.start_game()
+        
+    def display_chart(self,index: int, columns: int=8):
+        self.window.delete('1.0','end')              
+        UPPER_LIMIT= 2 ** self.base
+        start = 1 << index
+        chart = [str(x) for x in range(start, UPPER_LIMIT) if x % (start * 2) >= start]
+        for i in range(len(chart) // columns):            
+            text="\t".join(chart[i * columns : (i + 1) * columns])            
+            self.window.insert("end",text,'\n')
+            self.window.insert("end",'\n')
+        answer= askyesno('queston', 'Is your number in this list?')
+        if answer:
+            self.guess += 1 << index
+            
+    def game(self):        
+        for current in range(self.base):
+            
+            self.display_chart(current)
+        final='Your number is {0}'.format(self.guess)
+        self.top_lbl.set(final)
+        replay= askyesno('Replay?', 'Play again?')
+        if replay:
+            self.window.delete('1.0','end')
+            self.start_game()
+        else:
+            self.parent.destroy()
+            
+        
+    def on_yes(self):
+        if self.radio.get():
+            self.yes_btn.place_forget()
+            text='Is your number in this group below?'
+            self.top_lbl.set(text)
+            self.game()
+        else:
+            text= 'Think of a number between 1 and ->'
+            self.top_lbl.set(text)
+            self.yes_btn.place_forget()
+            self.btn.config(state='normal')
+        
+    def start_game(self):
+        self.guess= 0
+        text= 'Think of a number between 1 and ->'
+        self.top_lbl.set(text)
+        self.btn.config(state='normal')
+        
+    def key(self, event):
+        self.g_count +=1
+        message= 'count:{0} key:{1} num:{2} state:{3}'.format(self.g_count,
+                                                 event.keysym,event.keysym_num,
+                                       event.state)
+        logging.debug(message)
+        
+    def get_entry(self):
+        self.btn.config(state='disabled')
+        num= self.multiplier.get()        
+        self.base= self.base_dict[num]        
+        text= 'Your number is between 1 and {0}?'.format(num)
+        self.top_lbl.set(text)
+        self.yes_btn.place(x=350,y=100)
+        
+        
+        
 if __name__ == '__main__':
-    main()       
+    root= Tk()
+    Guess_Your_Number(root)
+    root.mainloop()
+      
